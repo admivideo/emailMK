@@ -2,14 +2,29 @@
 
 declare(strict_types=1);
 
+$root = dirname(__DIR__);
+
+require $root . '/app/autoload.php';
+
+$appConfig = require $root . '/config/app.php';
+$databaseConfig = require $root . '/config/database.php';
+
+date_default_timezone_set($appConfig['timezone']);
+
 $routes = [
-    '/' => function (): void {
+    '/' => function () use ($appConfig): void {
         header('Content-Type: text/html; charset=UTF-8');
-        echo '<h1>emailMK</h1><p>API de emails lista.</p>';
+        echo '<h1>' . htmlspecialchars($appConfig['name'], ENT_QUOTES, 'UTF-8') . '</h1>';
+        echo '<p>API de emails lista.</p>';
     },
-    '/health' => function (): void {
+    '/health' => function () use ($appConfig, $databaseConfig): void {
         header('Content-Type: application/json');
-        echo json_encode(['status' => 'ok']);
+        echo json_encode([
+            'status' => 'ok',
+            'app' => $appConfig['name'],
+            'env' => $appConfig['env'],
+            'database' => $databaseConfig['name'],
+        ]);
     },
 ];
 
