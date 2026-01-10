@@ -34,11 +34,13 @@ final class Database
 
     public static function fromEnv(): self
     {
+        $config = require dirname(__DIR__, 2) . '/config/database.php';
+
         return new self(
-            getenv('DB_HOST') ?: '127.0.0.1',
-            getenv('DB_NAME') ?: 'emailmk',
-            getenv('DB_USER') ?: 'root',
-            getenv('DB_PASSWORD') ?: ''
+            getenv('DB_HOST') ?: ($config['host'] ?? '127.0.0.1'),
+            getenv('DB_NAME') ?: ($config['database'] ?? 'emailmk'),
+            getenv('DB_USER') ?: ($config['user'] ?? 'root'),
+            getenv('DB_PASSWORD') ?: ($config['password'] ?? '')
         );
     }
 
