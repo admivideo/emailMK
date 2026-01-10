@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Controllers;
 
+use App\Services\CampaignPublisher;
 use PDO;
 
 final class CampaignController
@@ -58,5 +59,12 @@ final class CampaignController
     {
         $statement = $this->connection->prepare('DELETE FROM campaigns WHERE id = :id');
         $statement->execute(['id' => $campaignId]);
+    }
+
+    public function publish(int $campaignId, array $listIds, int $rateMs = 600): int
+    {
+        $publisher = new CampaignPublisher($this->connection);
+
+        return $publisher->publish($campaignId, $listIds, $rateMs);
     }
 }
