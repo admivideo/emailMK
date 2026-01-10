@@ -70,6 +70,7 @@ CREATE TABLE IF NOT EXISTS campaign_messages (
   sent_at TIMESTAMP NULL DEFAULT NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uniq_campaign_messages_campaign_subscriber (campaign_id, subscriber_id),
   CONSTRAINT fk_campaign_messages_campaign_id
     FOREIGN KEY (campaign_id) REFERENCES campaigns(id)
     ON DELETE CASCADE,
@@ -81,7 +82,7 @@ CREATE TABLE IF NOT EXISTS campaign_messages (
 CREATE TABLE IF NOT EXISTS send_queue (
   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   campaign_message_id BIGINT UNSIGNED NOT NULL,
-  status VARCHAR(50) NOT NULL DEFAULT 'queued',
+  status VARCHAR(50) NOT NULL DEFAULT 'pending',
   scheduled_at TIMESTAMP NULL DEFAULT NULL,
   attempts INT UNSIGNED NOT NULL DEFAULT 0,
   last_attempt_at TIMESTAMP NULL DEFAULT NULL,
@@ -89,6 +90,19 @@ CREATE TABLE IF NOT EXISTS send_queue (
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   CONSTRAINT fk_send_queue_campaign_message_id
     FOREIGN KEY (campaign_message_id) REFERENCES campaign_messages(id)
+    ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS campaign_lists (
+  campaign_id BIGINT UNSIGNED NOT NULL,
+  list_id BIGINT UNSIGNED NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (campaign_id, list_id),
+  CONSTRAINT fk_campaign_lists_campaign_id
+    FOREIGN KEY (campaign_id) REFERENCES campaigns(id)
+    ON DELETE CASCADE,
+  CONSTRAINT fk_campaign_lists_list_id
+    FOREIGN KEY (list_id) REFERENCES lists(id)
     ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
