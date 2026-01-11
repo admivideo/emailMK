@@ -5,6 +5,9 @@
 ## Objetivo
 Este proyecto inicia un espacio para construir, documentar y evolucionar el trabajo de forma organizada.
 
+## Inicio del proyecto
+Este punto marca el inicio del proyecto tras la limpieza inicial del repositorio en GitHub.
+
 ## Primeros pasos
 1. Revisa la estructura del repositorio y el archivo `index.php`.
 2. Define los objetivos iniciales y anota las tareas prioritarias.

@@ -9,7 +9,6 @@ if (!is_file($root . '/app/autoload.php')) {
     $root = dirname(__DIR__);
 }
 
-
 require $root . '/app/autoload.php';
 
 use App\Services\Database;
