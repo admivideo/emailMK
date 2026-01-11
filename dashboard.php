@@ -2,7 +2,11 @@
 
 declare(strict_types=1);
 
-$root = dirname(__DIR__);
+$root = __DIR__;
+
+if (!is_file($root . '/app/autoload.php')) {
+    $root = dirname(__DIR__);
+}
 
 require $root . '/app/autoload.php';
 
