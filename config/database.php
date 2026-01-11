@@ -6,6 +6,6 @@ return [
     'port' => 3306,
     'user' => '^A%Odbc%!IOn0s!',
     'password' => '$Fw7Hen^S&*36#DbSit@85$',
-    'database' => 'emialmk',
+    'database' => 'emailmk',
 
 ];
