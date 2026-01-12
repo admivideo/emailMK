@@ -11,8 +11,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($email === '' || $password === '') {
         $errors[] = 'Debes ingresar email y contraseña.';
-    } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-        $errors[] = 'El email no tiene un formato válido.';
     } else {
         try {
             $dsn = sprintf(
@@ -26,37 +24,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
             ]);
 
-            $statement = $pdo->prepare('SELECT * FROM users WHERE email = :email LIMIT 1');
+            $statement = $pdo->prepare('SELECT id, email, password FROM users WHERE email = :email LIMIT 1');
             $statement->execute(['email' => $email]);
             $user = $statement->fetch();
 
-            $passwordColumns = ['password', 'password_hash', 'clave'];
-            $storedPassword = null;
-
-            if ($user) {
-                foreach ($passwordColumns as $column) {
-                    if (array_key_exists($column, $user) && $user[$column] !== null && $user[$column] !== '') {
-                        $storedPassword = $user[$column];
-                        break;
-                    }
-                }
-            }
-
-            if (!$user) {
-                $errors[] = 'Credenciales inválidas.';
-            } elseif ($storedPassword === null) {
-                $errors[] = 'No se encontró un campo de contraseña válido en la tabla users.';
-            } elseif (password_verify($password, $storedPassword)) {
-                session_regenerate_id(true);
+            if ($user && (password_verify($password, $user['password']) || hash_equals($user['password'], $password))) {
                 $_SESSION['user_id'] = $user['id'];
                 $_SESSION['user_email'] = $user['email'];
                 header('Location: dashboard.php');
                 exit;
-            } else {
-                $errors[] = 'Credenciales inválidas.';
             }
+
+            $errors[] = 'Credenciales inválidas.';
         } catch (PDOException $exception) {
-            error_log($exception->getMessage());
             $errors[] = 'No se pudo validar el acceso. Inténtalo más tarde.';
         }
     }
