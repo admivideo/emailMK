@@ -248,6 +248,73 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['form_type'] ?? '') === 'ca
         border-top: 1px solid #e2e8f0;
       }
 
+      header {
+        position: absolute;
+        top: 16px;
+        right: 16px;
+      }
+
+      .menu-toggle {
+        display: none;
+      }
+
+      .menu-button {
+        display: inline-flex;
+        flex-direction: column;
+        justify-content: center;
+        gap: 5px;
+        width: 40px;
+        height: 40px;
+        border-radius: 8px;
+        border: 1px solid #d0d5dd;
+        background: #ffffff;
+        cursor: pointer;
+        padding: 8px;
+      }
+
+      .menu-button span {
+        display: block;
+        height: 2px;
+        width: 100%;
+        background: #1f2933;
+        border-radius: 999px;
+      }
+
+      nav {
+        position: absolute;
+        right: 0;
+        top: 52px;
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 12px 16px;
+        box-shadow: 0 12px 24px rgba(15, 23, 42, 0.12);
+        display: none;
+        min-width: 180px;
+      }
+
+      nav a {
+        display: block;
+        color: #1f2933;
+        text-decoration: none;
+        font-weight: 600;
+        padding: 8px 0;
+      }
+
+      .menu-toggle:checked + .menu-button + nav {
+        display: block;
+      }
+
+      @media (min-width: 768px) {
+        header {
+          position: fixed;
+        }
+
+        nav {
+          min-width: 220px;
+        }
+      }
+
       label {
         font-weight: 600;
       }
@@ -263,6 +330,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['form_type'] ?? '') === 'ca
     </style>
   </head>
   <body>
+    <header>
+      <input type="checkbox" id="menu-toggle" class="menu-toggle" />
+      <label for="menu-toggle" class="menu-button" aria-label="Abrir menú">
+        <span></span>
+        <span></span>
+        <span></span>
+      </label>
+      <nav aria-label="Menú principal">
+        <a href="#suscribers">Suscribers</a>
+        <a href="#campanas">Campañas</a>
+      </nav>
+    </header>
     <main>
       <h1>Bienvenido/a</h1>
       <p>Hola, <?php echo htmlspecialchars($userEmail, ENT_QUOTES, 'UTF-8'); ?>. Has iniciado sesión correctamente.</p>
@@ -272,15 +351,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['form_type'] ?? '') === 'ca
       <?php foreach ($uploadErrors as $error): ?>
         <p class="error"><?php echo htmlspecialchars($error, ENT_QUOTES, 'UTF-8'); ?></p>
       <?php endforeach; ?>
-      <form method="post" enctype="multipart/form-data">
-        <input type="hidden" name="form_type" value="subscribers" />
-        <label for="subscribers_csv">Subir CSV de suscriptores</label>
-        <input type="file" id="subscribers_csv" name="subscribers_csv" accept=".csv" required />
-        <button type="submit">Cargar y procesar</button>
-      </form>
+      <section class="section" id="suscribers">
+        <h2>Suscribers</h2>
+        <form method="post" enctype="multipart/form-data">
+          <input type="hidden" name="form_type" value="subscribers" />
+          <label for="subscribers_csv">Subir CSV de suscriptores</label>
+          <input type="file" id="subscribers_csv" name="subscribers_csv" accept=".csv" required />
+          <button type="submit">Cargar y procesar</button>
+        </form>
+      </section>
 
-      <section class="section">
-        <h2>Crear campaña</h2>
+      <section class="section" id="campanas">
+        <h2>Campañas</h2>
         <?php if ($campaignSuccess): ?>
           <p class="notice"><?php echo htmlspecialchars($campaignSuccess, ENT_QUOTES, 'UTF-8'); ?></p>
         <?php endif; ?>
