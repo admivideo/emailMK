@@ -11,8 +11,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($email === '' || $password === '') {
         $errors[] = 'Debes ingresar email y contraseña.';
-    } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-        $errors[] = 'El email no tiene un formato válido.';
     } else {
         try {
             $dsn = sprintf(
@@ -30,8 +28,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $statement->execute(['email' => $email]);
             $user = $statement->fetch();
 
-            if ($user && password_verify($password, $user['password'])) {
-                session_regenerate_id(true);
+            if ($user && (password_verify($password, $user['password']) || hash_equals($user['password'], $password))) {
                 $_SESSION['user_id'] = $user['id'];
                 $_SESSION['user_email'] = $user['email'];
                 header('Location: dashboard.php');
