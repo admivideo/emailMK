@@ -345,14 +345,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['form_type'] ?? '') === 'ca
     <main>
       <h1>Bienvenido/a</h1>
       <p>Hola, <?php echo htmlspecialchars($userEmail, ENT_QUOTES, 'UTF-8'); ?>. Has iniciado sesión correctamente.</p>
-      <?php if ($uploadSuccess): ?>
-        <p class="notice"><?php echo htmlspecialchars($uploadSuccess, ENT_QUOTES, 'UTF-8'); ?></p>
-      <?php endif; ?>
-      <?php foreach ($uploadErrors as $error): ?>
-        <p class="error"><?php echo htmlspecialchars($error, ENT_QUOTES, 'UTF-8'); ?></p>
-      <?php endforeach; ?>
       <section class="section" id="suscribers">
         <h2>Suscribers</h2>
+        <?php if ($uploadSuccess): ?>
+          <p class="notice"><?php echo htmlspecialchars($uploadSuccess, ENT_QUOTES, 'UTF-8'); ?></p>
+        <?php endif; ?>
+        <?php foreach ($uploadErrors as $error): ?>
+          <p class="error"><?php echo htmlspecialchars($error, ENT_QUOTES, 'UTF-8'); ?></p>
+        <?php endforeach; ?>
         <form method="post" enctype="multipart/form-data">
           <input type="hidden" name="form_type" value="subscribers" />
           <label for="subscribers_csv">Subir CSV de suscriptores</label>
