@@ -10,8 +10,17 @@ $userEmail = $_SESSION['user_email'] ?? 'usuario';
 $config = require __DIR__ . '/config/database.php';
 $uploadErrors = [];
 $uploadSuccess = '';
+$campaignErrors = [];
+$campaignSuccess = '';
+$campaignData = [
+    'name' => '',
+    'subject' => '',
+    'from_email' => '',
+    'from_name' => '',
+    'status' => 'draft',
+];
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['form_type'] ?? '') === 'subscribers') {
     if (!isset($_FILES['subscribers_csv']) || $_FILES['subscribers_csv']['error'] !== UPLOAD_ERR_OK) {
         $uploadErrors[] = 'No se pudo cargar el archivo CSV.';
     } else {
@@ -99,6 +108,67 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 }
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['form_type'] ?? '') === 'campaign') {
+    $campaignData = [
+        'name' => trim($_POST['name'] ?? ''),
+        'subject' => trim($_POST['subject'] ?? ''),
+        'from_email' => trim($_POST['from_email'] ?? ''),
+        'from_name' => trim($_POST['from_name'] ?? ''),
+        'status' => trim($_POST['status'] ?? 'draft'),
+    ];
+
+    if ($campaignData['name'] === '' || $campaignData['subject'] === '' || $campaignData['from_email'] === '') {
+        $campaignErrors[] = 'Nombre, asunto y email remitente son obligatorios.';
+    }
+
+    if ($campaignData['from_email'] !== '' && !filter_var($campaignData['from_email'], FILTER_VALIDATE_EMAIL)) {
+        $campaignErrors[] = 'El email remitente no es válido.';
+    }
+
+    $allowedStatuses = ['draft', 'scheduled', 'sending', 'sent'];
+    if ($campaignData['status'] === '' || !in_array($campaignData['status'], $allowedStatuses, true)) {
+        $campaignErrors[] = 'El estado seleccionado no es válido.';
+    }
+
+    if (!$campaignErrors) {
+        try {
+            $dsn = sprintf(
+                'mysql:host=%s;port=%s;dbname=%s;charset=utf8mb4',
+                $config['host'],
+                $config['port'],
+                $config['database']
+            );
+            $pdo = new PDO($dsn, $config['user'], $config['password'], [
+                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+            ]);
+
+            $statement = $pdo->prepare(
+                'INSERT INTO campaigns (name, subject, from_email, from_name, status)
+                 VALUES (:name, :subject, :from_email, :from_name, :status)'
+            );
+            $statement->execute([
+                'name' => $campaignData['name'],
+                'subject' => $campaignData['subject'],
+                'from_email' => $campaignData['from_email'],
+                'from_name' => $campaignData['from_name'] !== '' ? $campaignData['from_name'] : null,
+                'status' => $campaignData['status'],
+            ]);
+
+            $campaignSuccess = 'Campaña creada correctamente.';
+            $campaignData = [
+                'name' => '',
+                'subject' => '',
+                'from_email' => '',
+                'from_name' => '',
+                'status' => 'draft',
+            ];
+        } catch (PDOException $exception) {
+            $campaignErrors[] = 'No se pudo guardar la campaña en la base de datos.';
+        }
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -171,6 +241,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         background: #fee2e2;
         color: #991b1b;
       }
+
+      .section {
+        margin-top: 32px;
+        padding-top: 24px;
+        border-top: 1px solid #e2e8f0;
+      }
+
+      label {
+        font-weight: 600;
+      }
+
+      input,
+      select {
+        width: 100%;
+        padding: 10px 12px;
+        border: 1px solid #d0d5dd;
+        border-radius: 8px;
+        font-size: 0.95rem;
+      }
     </style>
   </head>
   <body>
@@ -184,10 +273,68 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <p class="error"><?php echo htmlspecialchars($error, ENT_QUOTES, 'UTF-8'); ?></p>
       <?php endforeach; ?>
       <form method="post" enctype="multipart/form-data">
+        <input type="hidden" name="form_type" value="subscribers" />
         <label for="subscribers_csv">Subir CSV de suscriptores</label>
         <input type="file" id="subscribers_csv" name="subscribers_csv" accept=".csv" required />
         <button type="submit">Cargar y procesar</button>
       </form>
+
+      <section class="section">
+        <h2>Crear campaña</h2>
+        <?php if ($campaignSuccess): ?>
+          <p class="notice"><?php echo htmlspecialchars($campaignSuccess, ENT_QUOTES, 'UTF-8'); ?></p>
+        <?php endif; ?>
+        <?php foreach ($campaignErrors as $error): ?>
+          <p class="error"><?php echo htmlspecialchars($error, ENT_QUOTES, 'UTF-8'); ?></p>
+        <?php endforeach; ?>
+        <form method="post">
+          <input type="hidden" name="form_type" value="campaign" />
+          <label for="campaign_name">Nombre</label>
+          <input
+            type="text"
+            id="campaign_name"
+            name="name"
+            required
+            value="<?php echo htmlspecialchars($campaignData['name'], ENT_QUOTES, 'UTF-8'); ?>"
+          />
+
+          <label for="campaign_subject">Asunto</label>
+          <input
+            type="text"
+            id="campaign_subject"
+            name="subject"
+            required
+            value="<?php echo htmlspecialchars($campaignData['subject'], ENT_QUOTES, 'UTF-8'); ?>"
+          />
+
+          <label for="campaign_from_email">Email remitente</label>
+          <input
+            type="email"
+            id="campaign_from_email"
+            name="from_email"
+            required
+            value="<?php echo htmlspecialchars($campaignData['from_email'], ENT_QUOTES, 'UTF-8'); ?>"
+          />
+
+          <label for="campaign_from_name">Nombre remitente</label>
+          <input
+            type="text"
+            id="campaign_from_name"
+            name="from_name"
+            value="<?php echo htmlspecialchars($campaignData['from_name'], ENT_QUOTES, 'UTF-8'); ?>"
+          />
+
+          <label for="campaign_status">Estado</label>
+          <select id="campaign_status" name="status">
+            <option value="draft" <?php echo $campaignData['status'] === 'draft' ? 'selected' : ''; ?>>Borrador</option>
+            <option value="scheduled" <?php echo $campaignData['status'] === 'scheduled' ? 'selected' : ''; ?>>Programada</option>
+            <option value="sending" <?php echo $campaignData['status'] === 'sending' ? 'selected' : ''; ?>>Envío</option>
+            <option value="sent" <?php echo $campaignData['status'] === 'sent' ? 'selected' : ''; ?>>Enviada</option>
+          </select>
+
+          <button type="submit">Crear campaña</button>
+        </form>
+      </section>
     </main>
   </body>
 </html>
