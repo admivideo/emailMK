@@ -42,7 +42,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $uploadErrors[] = 'El archivo CSV está vacío.';
                     } else {
                         $headerMap = array_flip(array_map('trim', $header));
-                        $requiredHeaders = ['id', 'email', 'creado_en', 'actualizado_en'];
+                        $requiredHeaders = ['id', 'email', 'nombre', 'creado_en', 'actualizado_en'];
 
                         foreach ($requiredHeaders as $requiredHeader) {
                             if (!array_key_exists($requiredHeader, $headerMap)) {
@@ -52,10 +52,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                         if (!$uploadErrors) {
                             $insert = $pdo->prepare(
-                                'INSERT INTO subscribers (id, email, created_at, updated_at)
-                                 VALUES (:id, :email, :created_at, :updated_at)
+                                'INSERT INTO subscribers (id, email, name, created_at, updated_at)
+                                 VALUES (:id, :email, :name, :created_at, :updated_at)
                                  ON DUPLICATE KEY UPDATE
                                    email = VALUES(email),
+                                   name = VALUES(name),
                                    created_at = VALUES(created_at),
                                    updated_at = VALUES(updated_at)'
                             );
@@ -64,6 +65,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             while (($row = fgetcsv($handle)) !== false) {
                                 $email = trim($row[$headerMap['email']] ?? '');
                                 $id = trim($row[$headerMap['id']] ?? '');
+                                $name = trim($row[$headerMap['nombre']] ?? '');
                                 $createdAt = trim($row[$headerMap['creado_en']] ?? '');
                                 $updatedAt = trim($row[$headerMap['actualizado_en']] ?? '');
 
@@ -78,6 +80,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 $insert->execute([
                                     'id' => $id !== '' ? (int) $id : null,
                                     'email' => $email,
+                                    'name' => $name !== '' ? $name : null,
                                     'created_at' => $createdAt !== '' ? $createdAt : null,
                                     'updated_at' => $updatedAt !== '' ? $updatedAt : null,
                                 ]);
