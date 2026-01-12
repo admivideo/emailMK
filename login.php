@@ -24,11 +24,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
             ]);
 
-            $statement = $pdo->prepare('SELECT id, email, password FROM users WHERE email = :email LIMIT 1');
+            $statement = $pdo->prepare('SELECT id, email, password_hash FROM users WHERE email = :email LIMIT 1');
             $statement->execute(['email' => $email]);
             $user = $statement->fetch();
 
-            if ($user && (password_verify($password, $user['password']) || hash_equals($user['password'], $password))) {
+            $storedPassword = $user['password_hash'] ?? '';
+
+            if ($user && ($storedPassword !== '' && (password_verify($password, $storedPassword) || hash_equals($storedPassword, $password)))) {
                 $_SESSION['user_id'] = $user['id'];
                 $_SESSION['user_email'] = $user['email'];
                 header('Location: dashboard.php');
