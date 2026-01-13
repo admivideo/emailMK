@@ -12,6 +12,8 @@ $uploadErrors = [];
 $uploadSuccess = '';
 $campaignErrors = [];
 $campaignSuccess = '';
+$campaignListError = '';
+$campaigns = [];
 $campaignData = [
     'name' => '',
     'subject' => '',
@@ -109,6 +111,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['form_type'] ?? '') === 'su
     }
 }
 
+$allowedSortColumns = [
+    'id' => 'id',
+    'name' => 'name',
+    'subject' => 'subject',
+    'from_email' => 'from_email',
+    'from_name' => 'from_name',
+    'status' => 'status',
+    'created_at' => 'created_at',
+    'updated_at' => 'updated_at',
+];
+$sortColumn = $_GET['sort'] ?? 'created_at';
+$sortDirection = strtolower($_GET['dir'] ?? 'desc') === 'asc' ? 'asc' : 'desc';
+if (!array_key_exists($sortColumn, $allowedSortColumns)) {
+    $sortColumn = 'created_at';
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['form_type'] ?? '') === 'campaign') {
     $campaignData = [
         'name' => trim($_POST['name'] ?? ''),
@@ -168,6 +186,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['form_type'] ?? '') === 'ca
             $campaignErrors[] = 'No se pudo guardar la campaña en la base de datos.';
         }
     }
+}
+
+try {
+    $dsn = sprintf(
+        'mysql:host=%s;port=%s;dbname=%s;charset=utf8mb4',
+        $config['host'],
+        $config['port'],
+        $config['database']
+    );
+    $pdo = new PDO($dsn, $config['user'], $config['password'], [
+        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+    ]);
+
+    $campaignsStatement = $pdo->prepare(
+        sprintf(
+            'SELECT id, name, subject, from_email, from_name, status, created_at, updated_at FROM campaigns ORDER BY %s %s',
+            $allowedSortColumns[$sortColumn],
+            strtoupper($sortDirection)
+        )
+    );
+    $campaignsStatement->execute();
+    $campaigns = $campaignsStatement->fetchAll();
+} catch (PDOException $exception) {
+    $campaignListError = 'No se pudo cargar el listado de campañas.';
 }
 ?>
 <!DOCTYPE html>
@@ -246,6 +289,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['form_type'] ?? '') === 'ca
         margin-top: 32px;
         padding-top: 24px;
         border-top: 1px solid #e2e8f0;
+        display: none;
+      }
+
+      .section.is-active {
+        display: block;
       }
 
       header {
@@ -327,6 +375,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['form_type'] ?? '') === 'ca
         border-radius: 8px;
         font-size: 0.95rem;
       }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 16px;
+        font-size: 0.95rem;
+      }
+
+      th,
+      td {
+        border-bottom: 1px solid #e2e8f0;
+        padding: 10px 8px;
+        text-align: left;
+      }
+
+      th a {
+        color: inherit;
+        text-decoration: none;
+        display: inline-flex;
+        gap: 4px;
+        align-items: center;
+      }
+
+      .sort-indicator {
+        font-size: 0.75rem;
+      }
+
+      .table-wrapper {
+        overflow-x: auto;
+      }
     </style>
   </head>
   <body>
@@ -338,14 +416,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['form_type'] ?? '') === 'ca
         <span></span>
       </label>
       <nav aria-label="Menú principal">
-        <a href="#suscribers">Suscribers</a>
-        <a href="#campanas">Campañas</a>
+        <a href="#suscribers" data-section="suscribers">Suscribers</a>
+        <a href="#campanas" data-section="campanas">Campañas</a>
       </nav>
     </header>
     <main>
       <h1>Bienvenido/a</h1>
       <p>Hola, <?php echo htmlspecialchars($userEmail, ENT_QUOTES, 'UTF-8'); ?>. Has iniciado sesión correctamente.</p>
-      <section class="section" id="suscribers">
+      <section class="section is-active" id="suscribers">
         <h2>Suscribers</h2>
         <?php if ($uploadSuccess): ?>
           <p class="notice"><?php echo htmlspecialchars($uploadSuccess, ENT_QUOTES, 'UTF-8'); ?></p>
@@ -416,7 +494,95 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['form_type'] ?? '') === 'ca
 
           <button type="submit">Crear campaña</button>
         </form>
+
+        <h3>Listado de campañas</h3>
+        <?php if ($campaignListError): ?>
+          <p class="error"><?php echo htmlspecialchars($campaignListError, ENT_QUOTES, 'UTF-8'); ?></p>
+        <?php elseif (!$campaigns): ?>
+          <p>No hay campañas registradas.</p>
+        <?php else: ?>
+          <?php
+            $labels = [
+                'id' => 'ID',
+                'name' => 'Nombre',
+                'subject' => 'Asunto',
+                'from_email' => 'Email remitente',
+                'from_name' => 'Nombre remitente',
+                'status' => 'Estado',
+                'created_at' => 'Creado',
+                'updated_at' => 'Actualizado',
+            ];
+
+            $nextDirection = $sortDirection === 'asc' ? 'desc' : 'asc';
+          ?>
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <?php foreach ($labels as $column => $label): ?>
+                    <?php
+                      $isActiveSort = $sortColumn === $column;
+                      $direction = $isActiveSort ? $nextDirection : 'asc';
+                    ?>
+                    <th>
+                      <a href="?sort=<?php echo urlencode($column); ?>&dir=<?php echo urlencode($direction); ?>#campanas">
+                        <?php echo htmlspecialchars($label, ENT_QUOTES, 'UTF-8'); ?>
+                        <?php if ($isActiveSort): ?>
+                          <span class="sort-indicator"><?php echo $sortDirection === 'asc' ? '▲' : '▼'; ?></span>
+                        <?php endif; ?>
+                      </a>
+                    </th>
+                  <?php endforeach; ?>
+                </tr>
+              </thead>
+              <tbody>
+                <?php foreach ($campaigns as $campaign): ?>
+                  <tr>
+                    <td><?php echo htmlspecialchars($campaign['id'], ENT_QUOTES, 'UTF-8'); ?></td>
+                    <td><?php echo htmlspecialchars($campaign['name'], ENT_QUOTES, 'UTF-8'); ?></td>
+                    <td><?php echo htmlspecialchars($campaign['subject'], ENT_QUOTES, 'UTF-8'); ?></td>
+                    <td><?php echo htmlspecialchars($campaign['from_email'], ENT_QUOTES, 'UTF-8'); ?></td>
+                    <td><?php echo htmlspecialchars($campaign['from_name'] ?? '', ENT_QUOTES, 'UTF-8'); ?></td>
+                    <td><?php echo htmlspecialchars($campaign['status'], ENT_QUOTES, 'UTF-8'); ?></td>
+                    <td><?php echo htmlspecialchars($campaign['created_at'], ENT_QUOTES, 'UTF-8'); ?></td>
+                    <td><?php echo htmlspecialchars($campaign['updated_at'], ENT_QUOTES, 'UTF-8'); ?></td>
+                  </tr>
+                <?php endforeach; ?>
+              </tbody>
+            </table>
+          </div>
+        <?php endif; ?>
       </section>
     </main>
+    <script>
+      const sections = document.querySelectorAll('.section');
+      const menuLinks = document.querySelectorAll('nav a[data-section]');
+
+      const setActiveSection = (sectionId) => {
+        sections.forEach((section) => {
+          section.classList.toggle('is-active', section.id === sectionId);
+        });
+      };
+
+      menuLinks.forEach((link) => {
+        link.addEventListener('click', (event) => {
+          event.preventDefault();
+          const sectionId = link.dataset.section;
+          if (sectionId) {
+            setActiveSection(sectionId);
+            history.replaceState(null, '', `#${sectionId}`);
+            const menuToggle = document.getElementById('menu-toggle');
+            if (menuToggle) {
+              menuToggle.checked = false;
+            }
+          }
+        });
+      });
+
+      if (window.location.hash) {
+        const sectionId = window.location.hash.replace('#', '');
+        setActiveSection(sectionId);
+      }
+    </script>
   </body>
 </html>
