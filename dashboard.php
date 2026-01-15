@@ -726,6 +726,7 @@ try {
                   <th>Texto</th>
                   <th>Creado</th>
                   <th>Actualizado</th>
+                  <th>Acciones</th>
                 </tr>
               </thead>
               <tbody>
@@ -739,6 +740,9 @@ try {
                     <td><?php echo htmlspecialchars($template['text_body'] ?? '', ENT_QUOTES, 'UTF-8'); ?></td>
                     <td><?php echo htmlspecialchars($template['created_at'], ENT_QUOTES, 'UTF-8'); ?></td>
                     <td><?php echo htmlspecialchars($template['updated_at'], ENT_QUOTES, 'UTF-8'); ?></td>
+                    <td>
+                      <a href="dashboard.php?edit_template=<?php echo urlencode($template['id']); ?>#plantillas">Editar</a>
+                    </td>
                   </tr>
                 <?php endforeach; ?>
               </tbody>
