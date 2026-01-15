@@ -18,6 +18,7 @@ $templateErrors = [];
 $templateSuccess = '';
 $templateListError = '';
 $templates = [];
+$templateId = null;
 $templateData = [
     'name' => '',
     'subject' => '',
@@ -200,6 +201,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['form_type'] ?? '') === 'ca
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['form_type'] ?? '') === 'template') {
+    $templateId = $_POST['template_id'] !== '' ? (int) ($_POST['template_id'] ?? 0) : null;
     $templateData = [
         'name' => trim($_POST['template_name'] ?? ''),
         'subject' => trim($_POST['template_subject'] ?? ''),
@@ -225,19 +227,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['form_type'] ?? '') === 'te
                 PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
             ]);
 
-            $statement = $pdo->prepare(
-                'INSERT INTO plantillas (name, subject, preheader, html_body, text_body)
-                 VALUES (:name, :subject, :preheader, :html_body, :text_body)'
-            );
-            $statement->execute([
-                'name' => $templateData['name'],
-                'subject' => $templateData['subject'],
-                'preheader' => $templateData['preheader'] !== '' ? $templateData['preheader'] : null,
-                'html_body' => $templateData['html_body'],
-                'text_body' => $templateData['text_body'] !== '' ? $templateData['text_body'] : null,
-            ]);
+            if ($templateId) {
+                $statement = $pdo->prepare(
+                    'UPDATE plantillas
+                     SET name = :name,
+                         subject = :subject,
+                         preheader = :preheader,
+                         html_body = :html_body,
+                         text_body = :text_body
+                     WHERE id = :id'
+                );
+                $statement->execute([
+                    'id' => $templateId,
+                    'name' => $templateData['name'],
+                    'subject' => $templateData['subject'],
+                    'preheader' => $templateData['preheader'] !== '' ? $templateData['preheader'] : null,
+                    'html_body' => $templateData['html_body'],
+                    'text_body' => $templateData['text_body'] !== '' ? $templateData['text_body'] : null,
+                ]);
+                $templateSuccess = 'Plantilla actualizada correctamente.';
+            } else {
+                $statement = $pdo->prepare(
+                    'INSERT INTO plantillas (name, subject, preheader, html_body, text_body)
+                     VALUES (:name, :subject, :preheader, :html_body, :text_body)'
+                );
+                $statement->execute([
+                    'name' => $templateData['name'],
+                    'subject' => $templateData['subject'],
+                    'preheader' => $templateData['preheader'] !== '' ? $templateData['preheader'] : null,
+                    'html_body' => $templateData['html_body'],
+                    'text_body' => $templateData['text_body'] !== '' ? $templateData['text_body'] : null,
+                ]);
+                $templateSuccess = 'Plantilla creada correctamente.';
+            }
 
-            $templateSuccess = 'Plantilla creada correctamente.';
             $templateData = [
                 'name' => '',
                 'subject' => '',
@@ -245,10 +268,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['form_type'] ?? '') === 'te
                 'html_body' => '',
                 'text_body' => '',
             ];
+            $templateId = null;
         } catch (PDOException $exception) {
             $templateErrors[] = 'No se pudo guardar la plantilla en la base de datos.';
         }
     }
+}
+
+if (isset($_GET['edit_template'])) {
+    $templateId = (int) $_GET['edit_template'];
 }
 
 try {
@@ -295,6 +323,42 @@ try {
     $templates = $templatesStatement->fetchAll();
 } catch (PDOException $exception) {
     $templateListError = 'No se pudo cargar el listado de plantillas.';
+}
+
+if ($templateId && !$templateErrors) {
+    try {
+        $dsn = sprintf(
+            'mysql:host=%s;port=%s;dbname=%s;charset=utf8mb4',
+            $config['host'],
+            $config['port'],
+            $config['database']
+        );
+        $pdo = new PDO($dsn, $config['user'], $config['password'], [
+            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+        ]);
+
+        $templateStatement = $pdo->prepare(
+            'SELECT id, name, subject, preheader, html_body, text_body FROM plantillas WHERE id = :id'
+        );
+        $templateStatement->execute(['id' => $templateId]);
+        $selectedTemplate = $templateStatement->fetch();
+
+        if ($selectedTemplate) {
+            $templateData = [
+                'name' => $selectedTemplate['name'],
+                'subject' => $selectedTemplate['subject'],
+                'preheader' => $selectedTemplate['preheader'] ?? '',
+                'html_body' => $selectedTemplate['html_body'],
+                'text_body' => $selectedTemplate['text_body'] ?? '',
+            ];
+        } else {
+            $templateId = null;
+            $templateErrors[] = 'No se encontró la plantilla seleccionada.';
+        }
+    } catch (PDOException $exception) {
+        $templateErrors[] = 'No se pudo cargar la plantilla seleccionada.';
+    }
 }
 ?>
 <!DOCTYPE html>
@@ -664,6 +728,7 @@ try {
         <?php endforeach; ?>
         <form method="post">
           <input type="hidden" name="form_type" value="template" />
+          <input type="hidden" name="template_id" value="<?php echo $templateId ? htmlspecialchars((string) $templateId, ENT_QUOTES, 'UTF-8') : ''; ?>" />
           <label for="template_name">Nombre</label>
           <input
             type="text"
@@ -705,7 +770,7 @@ try {
             name="template_text_body"
           ><?php echo htmlspecialchars($templateData['text_body'], ENT_QUOTES, 'UTF-8'); ?></textarea>
 
-          <button type="submit">Crear plantilla</button>
+          <button type="submit"><?php echo $templateId ? 'Actualizar plantilla' : 'Crear plantilla'; ?></button>
         </form>
 
         <h3>Listado de plantillas</h3>
