@@ -319,7 +319,21 @@ try {
     $campaignsStatement->execute();
     $campaigns = $campaignsStatement->fetchAll();
 } catch (PDOException $exception) {
-    $campaignListError = 'No se pudo cargar el listado de campañas.';
+    try {
+        $campaignsStatement = $pdo->prepare(
+            sprintf(
+                'SELECT id, name, subject, from_email, from_name, status, created_at, updated_at, NULL AS template_name
+                 FROM campaigns
+                 ORDER BY %s %s',
+                $allowedSortColumns[$sortColumn] === 'template_name' ? 'created_at' : $allowedSortColumns[$sortColumn],
+                strtoupper($sortDirection)
+            )
+        );
+        $campaignsStatement->execute();
+        $campaigns = $campaignsStatement->fetchAll();
+    } catch (PDOException $fallbackException) {
+        $campaignListError = 'No se pudo cargar el listado de campañas.';
+    }
 }
 
 try {
