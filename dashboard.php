@@ -133,6 +133,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['form_type'] ?? '') === 'su
 
 $allowedSortColumns = [
     'id' => 'id',
+    'template_name' => 'template_name',
     'name' => 'name',
     'subject' => 'subject',
     'from_email' => 'from_email',
@@ -188,10 +189,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['form_type'] ?? '') === 'ca
             ]);
 
             $statement = $pdo->prepare(
-                'INSERT INTO campaigns (name, subject, from_email, from_name, status)
-                 VALUES (:name, :subject, :from_email, :from_name, :status)'
+                'INSERT INTO campaigns (template_id, name, subject, from_email, from_name, status)
+                 VALUES (:template_id, :name, :subject, :from_email, :from_name, :status)'
             );
             $statement->execute([
+                'template_id' => $templateIdInput,
                 'name' => $campaignData['name'],
                 'subject' => $campaignData['subject'],
                 'from_email' => $campaignData['from_email'],
@@ -306,7 +308,10 @@ try {
 
     $campaignsStatement = $pdo->prepare(
         sprintf(
-            'SELECT id, name, subject, from_email, from_name, status, created_at, updated_at FROM campaigns ORDER BY %s %s',
+            'SELECT campaigns.id, campaigns.name, campaigns.subject, campaigns.from_email, campaigns.from_name, campaigns.status, campaigns.created_at, campaigns.updated_at, plantillas.name AS template_name
+             FROM campaigns
+             LEFT JOIN plantillas ON campaigns.template_id = plantillas.id
+             ORDER BY %s %s',
             $allowedSortColumns[$sortColumn],
             strtoupper($sortDirection)
         )
@@ -692,6 +697,7 @@ if ($templateId && !$templateErrors) {
           <?php
             $labels = [
                 'id' => 'ID',
+                'template_name' => 'Plantilla',
                 'name' => 'Nombre',
                 'subject' => 'Asunto',
                 'from_email' => 'Email remitente',
@@ -727,6 +733,7 @@ if ($templateId && !$templateErrors) {
                 <?php foreach ($campaigns as $campaign): ?>
                   <tr>
                     <td><?php echo htmlspecialchars($campaign['id'], ENT_QUOTES, 'UTF-8'); ?></td>
+                    <td><?php echo htmlspecialchars($campaign['template_name'] ?? '', ENT_QUOTES, 'UTF-8'); ?></td>
                     <td><?php echo htmlspecialchars($campaign['name'], ENT_QUOTES, 'UTF-8'); ?></td>
                     <td><?php echo htmlspecialchars($campaign['subject'], ENT_QUOTES, 'UTF-8'); ?></td>
                     <td><?php echo htmlspecialchars($campaign['from_email'], ENT_QUOTES, 'UTF-8'); ?></td>
