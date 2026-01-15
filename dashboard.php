@@ -26,6 +26,13 @@ $templateData = [
     'html_body' => '',
     'text_body' => '',
 ];
+$newTemplateData = [
+    'name' => '',
+    'subject' => '',
+    'preheader' => '',
+    'html_body' => '',
+    'text_body' => '',
+];
 $campaignData = [
     'name' => '',
     'subject' => '',
@@ -726,52 +733,103 @@ if ($templateId && !$templateErrors) {
         <?php foreach ($templateErrors as $error): ?>
           <p class="error"><?php echo htmlspecialchars($error, ENT_QUOTES, 'UTF-8'); ?></p>
         <?php endforeach; ?>
+        <h3>Crear plantilla</h3>
         <form method="post">
           <input type="hidden" name="form_type" value="template" />
-          <input type="hidden" name="template_id" value="<?php echo $templateId ? htmlspecialchars((string) $templateId, ENT_QUOTES, 'UTF-8') : ''; ?>" />
-          <label for="template_name">Nombre</label>
+          <input type="hidden" name="template_id" value="" />
+          <label for="new_template_name">Nombre</label>
           <input
             type="text"
-            id="template_name"
+            id="new_template_name"
             name="template_name"
             required
-            value="<?php echo htmlspecialchars($templateData['name'], ENT_QUOTES, 'UTF-8'); ?>"
+            value="<?php echo htmlspecialchars($newTemplateData['name'], ENT_QUOTES, 'UTF-8'); ?>"
           />
 
-          <label for="template_subject">Asunto</label>
+          <label for="new_template_subject">Asunto</label>
           <input
             type="text"
-            id="template_subject"
+            id="new_template_subject"
             name="template_subject"
             required
-            value="<?php echo htmlspecialchars($templateData['subject'], ENT_QUOTES, 'UTF-8'); ?>"
+            value="<?php echo htmlspecialchars($newTemplateData['subject'], ENT_QUOTES, 'UTF-8'); ?>"
           />
 
-          <label for="template_preheader">Preheader</label>
+          <label for="new_template_preheader">Preheader</label>
           <input
             type="text"
-            id="template_preheader"
+            id="new_template_preheader"
             name="template_preheader"
-            value="<?php echo htmlspecialchars($templateData['preheader'], ENT_QUOTES, 'UTF-8'); ?>"
+            value="<?php echo htmlspecialchars($newTemplateData['preheader'], ENT_QUOTES, 'UTF-8'); ?>"
           />
 
-          <label for="template_html_body">HTML del email</label>
+          <label for="new_template_html_body">HTML del email</label>
           <p class="helper">Puedes usar la variable <strong>{{subscriber_name}}</strong> para personalizar el nombre del destinatario.</p>
           <textarea
-            id="template_html_body"
+            id="new_template_html_body"
             name="template_html_body"
             required
-          ><?php echo htmlspecialchars($templateData['html_body'], ENT_QUOTES, 'UTF-8'); ?></textarea>
+          ><?php echo htmlspecialchars($newTemplateData['html_body'], ENT_QUOTES, 'UTF-8'); ?></textarea>
 
-          <label for="template_text_body">Texto alternativo</label>
+          <label for="new_template_text_body">Texto alternativo</label>
           <p class="helper">Incluye {{subscriber_name}} para mostrar el nombre del destinatario en texto plano.</p>
           <textarea
-            id="template_text_body"
+            id="new_template_text_body"
             name="template_text_body"
-          ><?php echo htmlspecialchars($templateData['text_body'], ENT_QUOTES, 'UTF-8'); ?></textarea>
+          ><?php echo htmlspecialchars($newTemplateData['text_body'], ENT_QUOTES, 'UTF-8'); ?></textarea>
 
-          <button type="submit"><?php echo $templateId ? 'Actualizar plantilla' : 'Crear plantilla'; ?></button>
+          <button type="submit">Crear plantilla</button>
         </form>
+
+        <?php if ($templateId): ?>
+          <h3>Editar plantilla</h3>
+          <form method="post">
+            <input type="hidden" name="form_type" value="template" />
+            <input type="hidden" name="template_id" value="<?php echo htmlspecialchars((string) $templateId, ENT_QUOTES, 'UTF-8'); ?>" />
+            <label for="template_name">Nombre</label>
+            <input
+              type="text"
+              id="template_name"
+              name="template_name"
+              required
+              value="<?php echo htmlspecialchars($templateData['name'], ENT_QUOTES, 'UTF-8'); ?>"
+            />
+
+            <label for="template_subject">Asunto</label>
+            <input
+              type="text"
+              id="template_subject"
+              name="template_subject"
+              required
+              value="<?php echo htmlspecialchars($templateData['subject'], ENT_QUOTES, 'UTF-8'); ?>"
+            />
+
+            <label for="template_preheader">Preheader</label>
+            <input
+              type="text"
+              id="template_preheader"
+              name="template_preheader"
+              value="<?php echo htmlspecialchars($templateData['preheader'], ENT_QUOTES, 'UTF-8'); ?>"
+            />
+
+            <label for="template_html_body">HTML del email</label>
+            <p class="helper">Puedes usar la variable <strong>{{subscriber_name}}</strong> para personalizar el nombre del destinatario.</p>
+            <textarea
+              id="template_html_body"
+              name="template_html_body"
+              required
+            ><?php echo htmlspecialchars($templateData['html_body'], ENT_QUOTES, 'UTF-8'); ?></textarea>
+
+            <label for="template_text_body">Texto alternativo</label>
+            <p class="helper">Incluye {{subscriber_name}} para mostrar el nombre del destinatario en texto plano.</p>
+            <textarea
+              id="template_text_body"
+              name="template_text_body"
+            ><?php echo htmlspecialchars($templateData['text_body'], ENT_QUOTES, 'UTF-8'); ?></textarea>
+
+            <button type="submit">Actualizar plantilla</button>
+          </form>
+        <?php endif; ?>
 
         <h3>Listado de plantillas</h3>
         <?php if ($templateListError): ?>
