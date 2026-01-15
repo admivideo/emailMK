@@ -476,6 +476,11 @@ try {
       .table-wrapper {
         overflow-x: auto;
       }
+
+      .helper {
+        font-size: 0.9rem;
+        color: #52606d;
+      }
     </style>
   </head>
   <body>
@@ -663,6 +668,7 @@ try {
           />
 
           <label for="template_html_body">HTML del email</label>
+          <p class="helper">Puedes usar la variable <strong>{{subscriber_name}}</strong> para personalizar el nombre del destinatario.</p>
           <textarea
             id="template_html_body"
             name="template_html_body"
@@ -670,6 +676,7 @@ try {
           ><?php echo htmlspecialchars($templateData['html_body'], ENT_QUOTES, 'UTF-8'); ?></textarea>
 
           <label for="template_text_body">Texto alternativo</label>
+          <p class="helper">Incluye {{subscriber_name}} para mostrar el nombre del destinatario en texto plano.</p>
           <textarea
             id="template_text_body"
             name="template_text_body"
