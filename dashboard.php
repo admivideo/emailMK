@@ -16,6 +16,8 @@ $campaignListError = '';
 $campaigns = [];
 $templateErrors = [];
 $templateSuccess = '';
+$templateListError = '';
+$templates = [];
 $templateData = [
     'name' => '',
     'subject' => '',
@@ -272,6 +274,27 @@ try {
     $campaigns = $campaignsStatement->fetchAll();
 } catch (PDOException $exception) {
     $campaignListError = 'No se pudo cargar el listado de campañas.';
+}
+
+try {
+    $dsn = sprintf(
+        'mysql:host=%s;port=%s;dbname=%s;charset=utf8mb4',
+        $config['host'],
+        $config['port'],
+        $config['database']
+    );
+    $pdo = new PDO($dsn, $config['user'], $config['password'], [
+        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+    ]);
+
+    $templatesStatement = $pdo->prepare(
+        'SELECT id, name, subject, preheader, html_body, text_body, created_at, updated_at FROM plantillas ORDER BY created_at DESC'
+    );
+    $templatesStatement->execute();
+    $templates = $templatesStatement->fetchAll();
+} catch (PDOException $exception) {
+    $templateListError = 'No se pudo cargar el listado de plantillas.';
 }
 ?>
 <!DOCTYPE html>
@@ -684,6 +707,44 @@ try {
 
           <button type="submit">Crear plantilla</button>
         </form>
+
+        <h3>Listado de plantillas</h3>
+        <?php if ($templateListError): ?>
+          <p class="error"><?php echo htmlspecialchars($templateListError, ENT_QUOTES, 'UTF-8'); ?></p>
+        <?php elseif (!$templates): ?>
+          <p>No hay plantillas registradas.</p>
+        <?php else: ?>
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Nombre</th>
+                  <th>Asunto</th>
+                  <th>Preheader</th>
+                  <th>HTML</th>
+                  <th>Texto</th>
+                  <th>Creado</th>
+                  <th>Actualizado</th>
+                </tr>
+              </thead>
+              <tbody>
+                <?php foreach ($templates as $template): ?>
+                  <tr>
+                    <td><?php echo htmlspecialchars($template['id'], ENT_QUOTES, 'UTF-8'); ?></td>
+                    <td><?php echo htmlspecialchars($template['name'], ENT_QUOTES, 'UTF-8'); ?></td>
+                    <td><?php echo htmlspecialchars($template['subject'], ENT_QUOTES, 'UTF-8'); ?></td>
+                    <td><?php echo htmlspecialchars($template['preheader'] ?? '', ENT_QUOTES, 'UTF-8'); ?></td>
+                    <td><?php echo htmlspecialchars($template['html_body'], ENT_QUOTES, 'UTF-8'); ?></td>
+                    <td><?php echo htmlspecialchars($template['text_body'] ?? '', ENT_QUOTES, 'UTF-8'); ?></td>
+                    <td><?php echo htmlspecialchars($template['created_at'], ENT_QUOTES, 'UTF-8'); ?></td>
+                    <td><?php echo htmlspecialchars($template['updated_at'], ENT_QUOTES, 'UTF-8'); ?></td>
+                  </tr>
+                <?php endforeach; ?>
+              </tbody>
+            </table>
+          </div>
+        <?php endif; ?>
       </section>
     </main>
     <script>
