@@ -14,6 +14,15 @@ $campaignErrors = [];
 $campaignSuccess = '';
 $campaignListError = '';
 $campaigns = [];
+$templateErrors = [];
+$templateSuccess = '';
+$templateData = [
+    'name' => '',
+    'subject' => '',
+    'preheader' => '',
+    'html_body' => '',
+    'text_body' => '',
+];
 $campaignData = [
     'name' => '',
     'subject' => '',
@@ -184,6 +193,58 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['form_type'] ?? '') === 'ca
             ];
         } catch (PDOException $exception) {
             $campaignErrors[] = 'No se pudo guardar la campaña en la base de datos.';
+        }
+    }
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['form_type'] ?? '') === 'template') {
+    $templateData = [
+        'name' => trim($_POST['template_name'] ?? ''),
+        'subject' => trim($_POST['template_subject'] ?? ''),
+        'preheader' => trim($_POST['template_preheader'] ?? ''),
+        'html_body' => trim($_POST['template_html_body'] ?? ''),
+        'text_body' => trim($_POST['template_text_body'] ?? ''),
+    ];
+
+    if ($templateData['name'] === '' || $templateData['subject'] === '' || $templateData['html_body'] === '') {
+        $templateErrors[] = 'Nombre, asunto y HTML son obligatorios.';
+    }
+
+    if (!$templateErrors) {
+        try {
+            $dsn = sprintf(
+                'mysql:host=%s;port=%s;dbname=%s;charset=utf8mb4',
+                $config['host'],
+                $config['port'],
+                $config['database']
+            );
+            $pdo = new PDO($dsn, $config['user'], $config['password'], [
+                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+            ]);
+
+            $statement = $pdo->prepare(
+                'INSERT INTO plantillas (name, subject, preheader, html_body, text_body)
+                 VALUES (:name, :subject, :preheader, :html_body, :text_body)'
+            );
+            $statement->execute([
+                'name' => $templateData['name'],
+                'subject' => $templateData['subject'],
+                'preheader' => $templateData['preheader'] !== '' ? $templateData['preheader'] : null,
+                'html_body' => $templateData['html_body'],
+                'text_body' => $templateData['text_body'] !== '' ? $templateData['text_body'] : null,
+            ]);
+
+            $templateSuccess = 'Plantilla creada correctamente.';
+            $templateData = [
+                'name' => '',
+                'subject' => '',
+                'preheader' => '',
+                'html_body' => '',
+                'text_body' => '',
+            ];
+        } catch (PDOException $exception) {
+            $templateErrors[] = 'No se pudo guardar la plantilla en la base de datos.';
         }
     }
 }
@@ -376,6 +437,16 @@ try {
         font-size: 0.95rem;
       }
 
+      textarea {
+        width: 100%;
+        min-height: 140px;
+        padding: 10px 12px;
+        border: 1px solid #d0d5dd;
+        border-radius: 8px;
+        font-size: 0.95rem;
+        font-family: inherit;
+      }
+
       table {
         width: 100%;
         border-collapse: collapse;
@@ -417,6 +488,7 @@ try {
       </label>
       <nav aria-label="Menú principal">
         <a href="#suscribers" data-section="suscribers">Suscribers</a>
+        <a href="#plantillas" data-section="plantillas">Plantillas</a>
         <a href="#campanas" data-section="campanas">Campañas</a>
       </nav>
     </header>
@@ -552,6 +624,59 @@ try {
             </table>
           </div>
         <?php endif; ?>
+      </section>
+
+      <section class="section" id="plantillas">
+        <h2>Plantillas</h2>
+        <?php if ($templateSuccess): ?>
+          <p class="notice"><?php echo htmlspecialchars($templateSuccess, ENT_QUOTES, 'UTF-8'); ?></p>
+        <?php endif; ?>
+        <?php foreach ($templateErrors as $error): ?>
+          <p class="error"><?php echo htmlspecialchars($error, ENT_QUOTES, 'UTF-8'); ?></p>
+        <?php endforeach; ?>
+        <form method="post">
+          <input type="hidden" name="form_type" value="template" />
+          <label for="template_name">Nombre</label>
+          <input
+            type="text"
+            id="template_name"
+            name="template_name"
+            required
+            value="<?php echo htmlspecialchars($templateData['name'], ENT_QUOTES, 'UTF-8'); ?>"
+          />
+
+          <label for="template_subject">Asunto</label>
+          <input
+            type="text"
+            id="template_subject"
+            name="template_subject"
+            required
+            value="<?php echo htmlspecialchars($templateData['subject'], ENT_QUOTES, 'UTF-8'); ?>"
+          />
+
+          <label for="template_preheader">Preheader</label>
+          <input
+            type="text"
+            id="template_preheader"
+            name="template_preheader"
+            value="<?php echo htmlspecialchars($templateData['preheader'], ENT_QUOTES, 'UTF-8'); ?>"
+          />
+
+          <label for="template_html_body">HTML del email</label>
+          <textarea
+            id="template_html_body"
+            name="template_html_body"
+            required
+          ><?php echo htmlspecialchars($templateData['html_body'], ENT_QUOTES, 'UTF-8'); ?></textarea>
+
+          <label for="template_text_body">Texto alternativo</label>
+          <textarea
+            id="template_text_body"
+            name="template_text_body"
+          ><?php echo htmlspecialchars($templateData['text_body'], ENT_QUOTES, 'UTF-8'); ?></textarea>
+
+          <button type="submit">Crear plantilla</button>
+        </form>
       </section>
     </main>
     <script>
