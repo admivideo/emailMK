@@ -188,18 +188,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['form_type'] ?? '') === 'ca
                 PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
             ]);
 
-            $statement = $pdo->prepare(
-                'INSERT INTO campaigns (template_id, name, subject, from_email, from_name, status)
-                 VALUES (:template_id, :name, :subject, :from_email, :from_name, :status)'
-            );
-            $statement->execute([
-                'template_id' => $templateIdInput,
-                'name' => $campaignData['name'],
-                'subject' => $campaignData['subject'],
-                'from_email' => $campaignData['from_email'],
-                'from_name' => $campaignData['from_name'] !== '' ? $campaignData['from_name'] : null,
-                'status' => $campaignData['status'],
-            ]);
+            try {
+                $statement = $pdo->prepare(
+                    'INSERT INTO campaigns (template_id, name, subject, from_email, from_name, status)
+                     VALUES (:template_id, :name, :subject, :from_email, :from_name, :status)'
+                );
+                $statement->execute([
+                    'template_id' => $templateIdInput,
+                    'name' => $campaignData['name'],
+                    'subject' => $campaignData['subject'],
+                    'from_email' => $campaignData['from_email'],
+                    'from_name' => $campaignData['from_name'] !== '' ? $campaignData['from_name'] : null,
+                    'status' => $campaignData['status'],
+                ]);
+            } catch (PDOException $insertException) {
+                $statement = $pdo->prepare(
+                    'INSERT INTO campaigns (name, subject, from_email, from_name, status)
+                     VALUES (:name, :subject, :from_email, :from_name, :status)'
+                );
+                $statement->execute([
+                    'name' => $campaignData['name'],
+                    'subject' => $campaignData['subject'],
+                    'from_email' => $campaignData['from_email'],
+                    'from_name' => $campaignData['from_name'] !== '' ? $campaignData['from_name'] : null,
+                    'status' => $campaignData['status'],
+                ]);
+            }
 
             $campaignSuccess = 'Campaña creada correctamente.';
             $campaignData = [
