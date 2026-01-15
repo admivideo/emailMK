@@ -19,6 +19,7 @@ $templateSuccess = '';
 $templateListError = '';
 $templates = [];
 $templateId = null;
+$templateOptions = [];
 $templateData = [
     'name' => '',
     'subject' => '',
@@ -154,9 +155,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['form_type'] ?? '') === 'ca
         'from_name' => trim($_POST['from_name'] ?? ''),
         'status' => trim($_POST['status'] ?? 'draft'),
     ];
+    $templateIdInput = (int) ($_POST['template_id'] ?? 0);
 
     if ($campaignData['name'] === '' || $campaignData['subject'] === '' || $campaignData['from_email'] === '') {
         $campaignErrors[] = 'Nombre, asunto y email remitente son obligatorios.';
+    }
+
+    if ($templateIdInput <= 0) {
+        $campaignErrors[] = 'Debes seleccionar una plantilla válida.';
     }
 
     if ($campaignData['from_email'] !== '' && !filter_var($campaignData['from_email'], FILTER_VALIDATE_EMAIL)) {
@@ -328,6 +334,7 @@ try {
     );
     $templatesStatement->execute();
     $templates = $templatesStatement->fetchAll();
+    $templateOptions = $templates;
 } catch (PDOException $exception) {
     $templateListError = 'No se pudo cargar el listado de plantillas.';
 }
@@ -661,6 +668,16 @@ if ($templateId && !$templateErrors) {
             <option value="scheduled" <?php echo $campaignData['status'] === 'scheduled' ? 'selected' : ''; ?>>Programada</option>
             <option value="sending" <?php echo $campaignData['status'] === 'sending' ? 'selected' : ''; ?>>Envío</option>
             <option value="sent" <?php echo $campaignData['status'] === 'sent' ? 'selected' : ''; ?>>Enviada</option>
+          </select>
+
+          <label for="campaign_template">Plantilla</label>
+          <select id="campaign_template" name="template_id" required>
+            <option value="">Selecciona una plantilla</option>
+            <?php foreach ($templateOptions as $templateOption): ?>
+              <option value="<?php echo htmlspecialchars((string) $templateOption['id'], ENT_QUOTES, 'UTF-8'); ?>">
+                <?php echo htmlspecialchars($templateOption['name'], ENT_QUOTES, 'UTF-8'); ?>
+              </option>
+            <?php endforeach; ?>
           </select>
 
           <button type="submit">Crear campaña</button>
