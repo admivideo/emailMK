@@ -530,7 +530,16 @@ try {
     $templates = $templatesStatement->fetchAll();
     $templateOptions = $templates;
 } catch (PDOException $exception) {
-    $templateListError = 'No se pudo cargar el listado de plantillas.';
+    try {
+        $templatesStatement = $pdo->prepare(
+            'SELECT id, name, subject, preheader, NULL AS unsubscribe_url, NULL AS list_unsubscribe, html_body, text_body, created_at, updated_at FROM plantillas ORDER BY created_at DESC'
+        );
+        $templatesStatement->execute();
+        $templates = $templatesStatement->fetchAll();
+        $templateOptions = $templates;
+    } catch (PDOException $fallbackException) {
+        $templateListError = 'No se pudo cargar el listado de plantillas.';
+    }
 }
 
 if ($templateId && !$templateErrors) {
