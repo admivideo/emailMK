@@ -34,6 +34,8 @@ $templateData = [
     'name' => '',
     'subject' => '',
     'preheader' => '',
+    'unsubscribe_url' => '',
+    'list_unsubscribe' => '',
     'html_body' => '',
     'text_body' => '',
 ];
@@ -41,6 +43,8 @@ $newTemplateData = [
     'name' => '',
     'subject' => '',
     'preheader' => '',
+    'unsubscribe_url' => '',
+    'list_unsubscribe' => '',
     'html_body' => '',
     'text_body' => '',
 ];
@@ -336,12 +340,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['form_type'] ?? '') === 'te
         'name' => trim($_POST['template_name'] ?? ''),
         'subject' => trim($_POST['template_subject'] ?? ''),
         'preheader' => trim($_POST['template_preheader'] ?? ''),
+        'unsubscribe_url' => trim($_POST['template_unsubscribe_url'] ?? ''),
+        'list_unsubscribe' => trim($_POST['template_list_unsubscribe'] ?? ''),
         'html_body' => trim($_POST['template_html_body'] ?? ''),
         'text_body' => trim($_POST['template_text_body'] ?? ''),
     ];
 
-    if ($templateData['name'] === '' || $templateData['subject'] === '' || $templateData['html_body'] === '') {
-        $templateErrors[] = 'Nombre, asunto y HTML son obligatorios.';
+    if (
+        $templateData['name'] === '' ||
+        $templateData['subject'] === '' ||
+        $templateData['html_body'] === '' ||
+        $templateData['unsubscribe_url'] === '' ||
+        $templateData['list_unsubscribe'] === ''
+    ) {
+        $templateErrors[] = 'Nombre, asunto, enlaces de baja y HTML son obligatorios.';
     }
 
     if (!$templateErrors) {
@@ -363,6 +375,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['form_type'] ?? '') === 'te
                      SET name = :name,
                          subject = :subject,
                          preheader = :preheader,
+                         unsubscribe_url = :unsubscribe_url,
+                         list_unsubscribe = :list_unsubscribe,
                          html_body = :html_body,
                          text_body = :text_body
                      WHERE id = :id'
@@ -372,19 +386,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['form_type'] ?? '') === 'te
                     'name' => $templateData['name'],
                     'subject' => $templateData['subject'],
                     'preheader' => $templateData['preheader'] !== '' ? $templateData['preheader'] : null,
+                    'unsubscribe_url' => $templateData['unsubscribe_url'],
+                    'list_unsubscribe' => $templateData['list_unsubscribe'],
                     'html_body' => $templateData['html_body'],
                     'text_body' => $templateData['text_body'] !== '' ? $templateData['text_body'] : null,
                 ]);
                 $templateSuccess = 'Plantilla actualizada correctamente.';
             } else {
                 $statement = $pdo->prepare(
-                    'INSERT INTO plantillas (name, subject, preheader, html_body, text_body)
-                     VALUES (:name, :subject, :preheader, :html_body, :text_body)'
+                    'INSERT INTO plantillas (name, subject, preheader, unsubscribe_url, list_unsubscribe, html_body, text_body)
+                     VALUES (:name, :subject, :preheader, :unsubscribe_url, :list_unsubscribe, :html_body, :text_body)'
                 );
                 $statement->execute([
                     'name' => $templateData['name'],
                     'subject' => $templateData['subject'],
                     'preheader' => $templateData['preheader'] !== '' ? $templateData['preheader'] : null,
+                    'unsubscribe_url' => $templateData['unsubscribe_url'],
+                    'list_unsubscribe' => $templateData['list_unsubscribe'],
                     'html_body' => $templateData['html_body'],
                     'text_body' => $templateData['text_body'] !== '' ? $templateData['text_body'] : null,
                 ]);
@@ -395,6 +413,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['form_type'] ?? '') === 'te
                 'name' => '',
                 'subject' => '',
                 'preheader' => '',
+                'unsubscribe_url' => '',
+                'list_unsubscribe' => '',
                 'html_body' => '',
                 'text_body' => '',
             ];
@@ -504,7 +524,7 @@ try {
     ]);
 
     $templatesStatement = $pdo->prepare(
-        'SELECT id, name, subject, preheader, html_body, text_body, created_at, updated_at FROM plantillas ORDER BY created_at DESC'
+        'SELECT id, name, subject, preheader, unsubscribe_url, list_unsubscribe, html_body, text_body, created_at, updated_at FROM plantillas ORDER BY created_at DESC'
     );
     $templatesStatement->execute();
     $templates = $templatesStatement->fetchAll();
@@ -527,7 +547,7 @@ if ($templateId && !$templateErrors) {
         ]);
 
         $templateStatement = $pdo->prepare(
-            'SELECT id, name, subject, preheader, html_body, text_body FROM plantillas WHERE id = :id'
+            'SELECT id, name, subject, preheader, unsubscribe_url, list_unsubscribe, html_body, text_body FROM plantillas WHERE id = :id'
         );
         $templateStatement->execute(['id' => $templateId]);
         $selectedTemplate = $templateStatement->fetch();
@@ -537,6 +557,8 @@ if ($templateId && !$templateErrors) {
                 'name' => $selectedTemplate['name'],
                 'subject' => $selectedTemplate['subject'],
                 'preheader' => $selectedTemplate['preheader'] ?? '',
+                'unsubscribe_url' => $selectedTemplate['unsubscribe_url'] ?? '',
+                'list_unsubscribe' => $selectedTemplate['list_unsubscribe'] ?? '',
                 'html_body' => $selectedTemplate['html_body'],
                 'text_body' => $selectedTemplate['text_body'] ?? '',
             ];
@@ -1034,8 +1056,27 @@ if ($templateId && !$templateErrors) {
             value="<?php echo htmlspecialchars($newTemplateData['preheader'], ENT_QUOTES, 'UTF-8'); ?>"
           />
 
+          <label for="new_template_unsubscribe_url">Link de baja</label>
+          <input
+            type="url"
+            id="new_template_unsubscribe_url"
+            name="template_unsubscribe_url"
+            required
+            value="<?php echo htmlspecialchars($newTemplateData['unsubscribe_url'], ENT_QUOTES, 'UTF-8'); ?>"
+          />
+
+          <label for="new_template_list_unsubscribe">List-Unsubscribe</label>
+          <input
+            type="text"
+            id="new_template_list_unsubscribe"
+            name="template_list_unsubscribe"
+            required
+            value="<?php echo htmlspecialchars($newTemplateData['list_unsubscribe'], ENT_QUOTES, 'UTF-8'); ?>"
+          />
+          <p class="helper">Ejemplo: &lt;mailto:unsubscribe@tu-dominio.com&gt;, &lt;https://tu-dominio.com/unsubscribe&gt;.</p>
+
           <label for="new_template_html_body">HTML del email</label>
-          <p class="helper">Puedes usar la variable <strong>{{subscriber_name}}</strong> para personalizar el nombre del destinatario.</p>
+          <p class="helper">Incluye el link visible “Darme de baja” usando {{unsubscribe_url}} y la variable <strong>{{subscriber_name}}</strong> para personalizar el nombre del destinatario.</p>
           <textarea
             id="new_template_html_body"
             name="template_html_body"
@@ -1043,7 +1084,7 @@ if ($templateId && !$templateErrors) {
           ><?php echo htmlspecialchars($newTemplateData['html_body'], ENT_QUOTES, 'UTF-8'); ?></textarea>
 
           <label for="new_template_text_body">Texto alternativo</label>
-          <p class="helper">Incluye {{subscriber_name}} para mostrar el nombre del destinatario en texto plano.</p>
+          <p class="helper">Incluye “Darme de baja”: {{unsubscribe_url}} y {{subscriber_name}} en texto plano.</p>
           <textarea
             id="new_template_text_body"
             name="template_text_body"
@@ -1083,8 +1124,27 @@ if ($templateId && !$templateErrors) {
               value="<?php echo htmlspecialchars($templateData['preheader'], ENT_QUOTES, 'UTF-8'); ?>"
             />
 
+            <label for="template_unsubscribe_url">Link de baja</label>
+            <input
+              type="url"
+              id="template_unsubscribe_url"
+              name="template_unsubscribe_url"
+              required
+              value="<?php echo htmlspecialchars($templateData['unsubscribe_url'], ENT_QUOTES, 'UTF-8'); ?>"
+            />
+
+            <label for="template_list_unsubscribe">List-Unsubscribe</label>
+            <input
+              type="text"
+              id="template_list_unsubscribe"
+              name="template_list_unsubscribe"
+              required
+              value="<?php echo htmlspecialchars($templateData['list_unsubscribe'], ENT_QUOTES, 'UTF-8'); ?>"
+            />
+            <p class="helper">Ejemplo: &lt;mailto:unsubscribe@tu-dominio.com&gt;, &lt;https://tu-dominio.com/unsubscribe&gt;.</p>
+
             <label for="template_html_body">HTML del email</label>
-            <p class="helper">Puedes usar la variable <strong>{{subscriber_name}}</strong> para personalizar el nombre del destinatario.</p>
+            <p class="helper">Incluye el link visible “Darme de baja” usando {{unsubscribe_url}} y la variable <strong>{{subscriber_name}}</strong> para personalizar el nombre del destinatario.</p>
             <textarea
               id="template_html_body"
               name="template_html_body"
@@ -1092,7 +1152,7 @@ if ($templateId && !$templateErrors) {
             ><?php echo htmlspecialchars($templateData['html_body'], ENT_QUOTES, 'UTF-8'); ?></textarea>
 
             <label for="template_text_body">Texto alternativo</label>
-            <p class="helper">Incluye {{subscriber_name}} para mostrar el nombre del destinatario en texto plano.</p>
+            <p class="helper">Incluye “Darme de baja”: {{unsubscribe_url}} y {{subscriber_name}} en texto plano.</p>
             <textarea
               id="template_text_body"
               name="template_text_body"
@@ -1116,6 +1176,8 @@ if ($templateId && !$templateErrors) {
                   <th>Nombre</th>
                   <th>Asunto</th>
                   <th>Preheader</th>
+                  <th>Link baja</th>
+                  <th>List-Unsubscribe</th>
                   <th>HTML</th>
                   <th>Texto</th>
                   <th>Creado</th>
@@ -1130,6 +1192,8 @@ if ($templateId && !$templateErrors) {
                     <td><?php echo htmlspecialchars($template['name'], ENT_QUOTES, 'UTF-8'); ?></td>
                     <td><?php echo htmlspecialchars($template['subject'], ENT_QUOTES, 'UTF-8'); ?></td>
                     <td><?php echo htmlspecialchars($template['preheader'] ?? '', ENT_QUOTES, 'UTF-8'); ?></td>
+                    <td><?php echo htmlspecialchars($template['unsubscribe_url'] ?? '', ENT_QUOTES, 'UTF-8'); ?></td>
+                    <td><?php echo htmlspecialchars($template['list_unsubscribe'] ?? '', ENT_QUOTES, 'UTF-8'); ?></td>
                     <td><?php echo htmlspecialchars($template['html_body'], ENT_QUOTES, 'UTF-8'); ?></td>
                     <td><?php echo htmlspecialchars($template['text_body'] ?? '', ENT_QUOTES, 'UTF-8'); ?></td>
                     <td><?php echo htmlspecialchars($template['created_at'], ENT_QUOTES, 'UTF-8'); ?></td>
