@@ -14,6 +14,7 @@ $campaignErrors = [];
 $campaignSuccess = '';
 $campaignListError = '';
 $campaigns = [];
+$campaignTemplateId = '';
 $templateErrors = [];
 $templateSuccess = '';
 $templateListError = '';
@@ -157,6 +158,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['form_type'] ?? '') === 'ca
         'status' => trim($_POST['status'] ?? 'draft'),
     ];
     $templateIdInput = (int) ($_POST['template_id'] ?? 0);
+    $campaignTemplateId = $templateIdInput > 0 ? (string) $templateIdInput : '';
 
     if ($campaignData['name'] === '' || $campaignData['subject'] === '' || $campaignData['from_email'] === '') {
         $campaignErrors[] = 'Nombre, asunto y email remitente son obligatorios.';
@@ -193,41 +195,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['form_type'] ?? '') === 'ca
             if (!$templateCheck->fetchColumn()) {
                 $campaignErrors[] = 'La plantilla seleccionada no existe.';
             } else {
-            try {
-                $statement = $pdo->prepare(
-                    'INSERT INTO campaigns (template_id, name, subject, from_email, from_name, status)
-                     VALUES (:template_id, :name, :subject, :from_email, :from_name, :status)'
-                );
-                $statement->execute([
-                    'template_id' => $templateIdInput,
-                    'name' => $campaignData['name'],
-                    'subject' => $campaignData['subject'],
-                    'from_email' => $campaignData['from_email'],
-                    'from_name' => $campaignData['from_name'] !== '' ? $campaignData['from_name'] : null,
-                    'status' => $campaignData['status'],
-                ]);
-            } catch (PDOException $insertException) {
-                $statement = $pdo->prepare(
-                    'INSERT INTO campaigns (name, subject, from_email, from_name, status)
-                     VALUES (:name, :subject, :from_email, :from_name, :status)'
-                );
-                $statement->execute([
-                    'name' => $campaignData['name'],
-                    'subject' => $campaignData['subject'],
-                    'from_email' => $campaignData['from_email'],
-                    'from_name' => $campaignData['from_name'] !== '' ? $campaignData['from_name'] : null,
-                    'status' => $campaignData['status'],
-                ]);
-            }
+                try {
+                    $statement = $pdo->prepare(
+                        'INSERT INTO campaigns (template_id, name, subject, from_email, from_name, status)
+                         VALUES (:template_id, :name, :subject, :from_email, :from_name, :status)'
+                    );
+                    $statement->execute([
+                        'template_id' => $templateIdInput,
+                        'name' => $campaignData['name'],
+                        'subject' => $campaignData['subject'],
+                        'from_email' => $campaignData['from_email'],
+                        'from_name' => $campaignData['from_name'] !== '' ? $campaignData['from_name'] : null,
+                        'status' => $campaignData['status'],
+                    ]);
+                } catch (PDOException $insertException) {
+                    $statement = $pdo->prepare(
+                        'INSERT INTO campaigns (name, subject, from_email, from_name, status)
+                         VALUES (:name, :subject, :from_email, :from_name, :status)'
+                    );
+                    $statement->execute([
+                        'name' => $campaignData['name'],
+                        'subject' => $campaignData['subject'],
+                        'from_email' => $campaignData['from_email'],
+                        'from_name' => $campaignData['from_name'] !== '' ? $campaignData['from_name'] : null,
+                        'status' => $campaignData['status'],
+                    ]);
+                }
 
-            $campaignSuccess = 'Campaña creada correctamente.';
-            $campaignData = [
-                'name' => '',
-                'subject' => '',
-                'from_email' => '',
-                'from_name' => '',
-                'status' => 'draft',
-            ];
+                $campaignSuccess = 'Campaña creada correctamente.';
+                $campaignData = [
+                    'name' => '',
+                    'subject' => '',
+                    'from_email' => '',
+                    'from_name' => '',
+                    'status' => 'draft',
+                ];
+                $campaignTemplateId = '';
             }
         } catch (PDOException $exception) {
             $campaignErrors[] = 'No se pudo guardar la campaña en la base de datos.';
@@ -713,7 +716,10 @@ if ($templateId && !$templateErrors) {
           <select id="campaign_template" name="template_id" required>
             <option value="">Selecciona una plantilla</option>
             <?php foreach ($templateOptions as $templateOption): ?>
-              <option value="<?php echo htmlspecialchars((string) $templateOption['id'], ENT_QUOTES, 'UTF-8'); ?>">
+              <option
+                value="<?php echo htmlspecialchars((string) $templateOption['id'], ENT_QUOTES, 'UTF-8'); ?>"
+                <?php echo $campaignTemplateId === (string) $templateOption['id'] ? 'selected' : ''; ?>
+              >
                 <?php echo htmlspecialchars($templateOption['name'], ENT_QUOTES, 'UTF-8'); ?>
               </option>
             <?php endforeach; ?>
