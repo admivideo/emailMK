@@ -94,6 +94,28 @@ CREATE TABLE IF NOT EXISTS campaign_messages (
     ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+CREATE TABLE IF NOT EXISTS email_queue (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  campaign_id BIGINT UNSIGNED NOT NULL,
+  subscriber_id BIGINT UNSIGNED NOT NULL,
+  to_email VARCHAR(255) NOT NULL,
+  subject_rendered VARCHAR(255) NOT NULL,
+  html_rendered MEDIUMTEXT NOT NULL,
+  status ENUM('pending', 'processing', 'sent', 'failed', 'skipped') NOT NULL DEFAULT 'pending',
+  attempts INT UNSIGNED NOT NULL DEFAULT 0,
+  last_error TEXT DEFAULT NULL,
+  scheduled_at TIMESTAMP NULL DEFAULT NULL,
+  sent_at TIMESTAMP NULL DEFAULT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT fk_email_queue_campaign_id
+    FOREIGN KEY (campaign_id) REFERENCES campaigns(id)
+    ON DELETE CASCADE,
+  CONSTRAINT fk_email_queue_subscriber_id
+    FOREIGN KEY (subscriber_id) REFERENCES subscribers(id)
+    ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 CREATE TABLE IF NOT EXISTS send_queue (
   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   campaign_message_id BIGINT UNSIGNED NOT NULL,
@@ -138,6 +160,12 @@ CREATE INDEX idx_send_queue_status_scheduled_at
 
 CREATE INDEX idx_campaign_messages_campaign_subscriber
   ON campaign_messages (campaign_id, subscriber_id);
+
+CREATE INDEX idx_email_queue_status_scheduled_at
+  ON email_queue (status, scheduled_at);
+
+CREATE INDEX idx_email_queue_campaign_status
+  ON email_queue (campaign_id, status);
 
 CREATE INDEX idx_events_campaign_message_type
   ON events (campaign_message_id, type);
