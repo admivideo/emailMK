@@ -15,6 +15,15 @@ $campaignSuccess = '';
 $campaignListError = '';
 $campaigns = [];
 $campaignTemplateId = '';
+$campaignId = null;
+$campaignEditData = [
+    'name' => '',
+    'subject' => '',
+    'from_email' => '',
+    'from_name' => '',
+    'status' => 'draft',
+];
+$campaignEditTemplateId = '';
 $templateErrors = [];
 $templateSuccess = '';
 $templateListError = '';
@@ -238,6 +247,89 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['form_type'] ?? '') === 'ca
     }
 }
 
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['form_type'] ?? '') === 'campaign_edit') {
+    $campaignId = $_POST['campaign_id'] !== '' ? (int) ($_POST['campaign_id'] ?? 0) : null;
+    $campaignEditData = [
+        'name' => trim($_POST['edit_name'] ?? ''),
+        'subject' => trim($_POST['edit_subject'] ?? ''),
+        'from_email' => trim($_POST['edit_from_email'] ?? ''),
+        'from_name' => trim($_POST['edit_from_name'] ?? ''),
+        'status' => trim($_POST['edit_status'] ?? 'draft'),
+    ];
+    $campaignEditTemplateId = trim($_POST['edit_template_id'] ?? '');
+
+    if ($campaignEditData['name'] === '' || $campaignEditData['subject'] === '' || $campaignEditData['from_email'] === '') {
+        $campaignErrors[] = 'Nombre, asunto y email remitente son obligatorios.';
+    }
+
+    if ($campaignEditTemplateId === '') {
+        $campaignErrors[] = 'Debes seleccionar una plantilla válida.';
+    }
+
+    if ($campaignEditData['from_email'] !== '' && !filter_var($campaignEditData['from_email'], FILTER_VALIDATE_EMAIL)) {
+        $campaignErrors[] = 'El email remitente no es válido.';
+    }
+
+    $allowedStatuses = ['draft', 'scheduled', 'sending', 'sent'];
+    if ($campaignEditData['status'] === '' || !in_array($campaignEditData['status'], $allowedStatuses, true)) {
+        $campaignErrors[] = 'El estado seleccionado no es válido.';
+    }
+
+    if (!$campaignErrors && $campaignId) {
+        try {
+            $dsn = sprintf(
+                'mysql:host=%s;port=%s;dbname=%s;charset=utf8mb4',
+                $config['host'],
+                $config['port'],
+                $config['database']
+            );
+            $pdo = new PDO($dsn, $config['user'], $config['password'], [
+                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+            ]);
+
+            $templateCheck = $pdo->prepare('SELECT 1 FROM plantillas WHERE id = :id');
+            $templateCheck->execute(['id' => (int) $campaignEditTemplateId]);
+            if (!$templateCheck->fetchColumn()) {
+                $campaignErrors[] = 'La plantilla seleccionada no existe.';
+            } else {
+                $statement = $pdo->prepare(
+                    'UPDATE campaigns
+                     SET template_id = :template_id,
+                         name = :name,
+                         subject = :subject,
+                         from_email = :from_email,
+                         from_name = :from_name,
+                         status = :status
+                     WHERE id = :id'
+                );
+                $statement->execute([
+                    'id' => $campaignId,
+                    'template_id' => (int) $campaignEditTemplateId,
+                    'name' => $campaignEditData['name'],
+                    'subject' => $campaignEditData['subject'],
+                    'from_email' => $campaignEditData['from_email'],
+                    'from_name' => $campaignEditData['from_name'] !== '' ? $campaignEditData['from_name'] : null,
+                    'status' => $campaignEditData['status'],
+                ]);
+
+                $campaignSuccess = 'Campaña actualizada correctamente.';
+                $campaignId = null;
+                $campaignEditTemplateId = '';
+                $campaignEditData = [
+                    'name' => '',
+                    'subject' => '',
+                    'from_email' => '',
+                    'from_name' => '',
+                    'status' => 'draft',
+                ];
+            }
+        } catch (PDOException $exception) {
+            $campaignErrors[] = 'No se pudo actualizar la campaña en la base de datos.';
+        }
+    }
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['form_type'] ?? '') === 'template') {
     $templateId = $_POST['template_id'] !== '' ? (int) ($_POST['template_id'] ?? 0) : null;
     $templateData = [
@@ -317,6 +409,10 @@ if (isset($_GET['edit_template'])) {
     $templateId = (int) $_GET['edit_template'];
 }
 
+if (isset($_GET['edit_campaign'])) {
+    $campaignId = (int) $_GET['edit_campaign'];
+}
+
 try {
     $dsn = sprintf(
         'mysql:host=%s;port=%s;dbname=%s;charset=utf8mb4',
@@ -359,6 +455,42 @@ try {
     }
 }
 
+if ($campaignId && !$campaignErrors) {
+    try {
+        $dsn = sprintf(
+            'mysql:host=%s;port=%s;dbname=%s;charset=utf8mb4',
+            $config['host'],
+            $config['port'],
+            $config['database']
+        );
+        $pdo = new PDO($dsn, $config['user'], $config['password'], [
+            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+        ]);
+
+        $campaignStatement = $pdo->prepare(
+            'SELECT id, template_id, name, subject, from_email, from_name, status FROM campaigns WHERE id = :id'
+        );
+        $campaignStatement->execute(['id' => $campaignId]);
+        $selectedCampaign = $campaignStatement->fetch();
+
+        if ($selectedCampaign) {
+            $campaignEditData = [
+                'name' => $selectedCampaign['name'],
+                'subject' => $selectedCampaign['subject'],
+                'from_email' => $selectedCampaign['from_email'],
+                'from_name' => $selectedCampaign['from_name'] ?? '',
+                'status' => $selectedCampaign['status'],
+            ];
+            $campaignEditTemplateId = (string) ($selectedCampaign['template_id'] ?? '');
+        } else {
+            $campaignId = null;
+            $campaignErrors[] = 'No se encontró la campaña seleccionada.';
+        }
+    } catch (PDOException $exception) {
+        $campaignErrors[] = 'No se pudo cargar la campaña seleccionada.';
+    }
+}
 try {
     $dsn = sprintf(
         'mysql:host=%s;port=%s;dbname=%s;charset=utf8mb4',
@@ -667,6 +799,7 @@ if ($templateId && !$templateErrors) {
         <?php foreach ($campaignErrors as $error): ?>
           <p class="error"><?php echo htmlspecialchars($error, ENT_QUOTES, 'UTF-8'); ?></p>
         <?php endforeach; ?>
+        <h3>Crear campaña</h3>
         <form method="post">
           <input type="hidden" name="form_type" value="campaign" />
           <label for="campaign_name">Nombre</label>
@@ -728,6 +861,71 @@ if ($templateId && !$templateErrors) {
           <button type="submit">Crear campaña</button>
         </form>
 
+        <?php if ($campaignId): ?>
+          <h3>Editar campaña</h3>
+          <form method="post">
+            <input type="hidden" name="form_type" value="campaign_edit" />
+            <input type="hidden" name="campaign_id" value="<?php echo htmlspecialchars((string) $campaignId, ENT_QUOTES, 'UTF-8'); ?>" />
+            <label for="campaign_edit_name">Nombre</label>
+            <input
+              type="text"
+              id="campaign_edit_name"
+              name="edit_name"
+              required
+              value="<?php echo htmlspecialchars($campaignEditData['name'], ENT_QUOTES, 'UTF-8'); ?>"
+            />
+
+            <label for="campaign_edit_subject">Asunto</label>
+            <input
+              type="text"
+              id="campaign_edit_subject"
+              name="edit_subject"
+              required
+              value="<?php echo htmlspecialchars($campaignEditData['subject'], ENT_QUOTES, 'UTF-8'); ?>"
+            />
+
+            <label for="campaign_edit_from_email">Email remitente</label>
+            <input
+              type="email"
+              id="campaign_edit_from_email"
+              name="edit_from_email"
+              required
+              value="<?php echo htmlspecialchars($campaignEditData['from_email'], ENT_QUOTES, 'UTF-8'); ?>"
+            />
+
+            <label for="campaign_edit_from_name">Nombre remitente</label>
+            <input
+              type="text"
+              id="campaign_edit_from_name"
+              name="edit_from_name"
+              value="<?php echo htmlspecialchars($campaignEditData['from_name'], ENT_QUOTES, 'UTF-8'); ?>"
+            />
+
+            <label for="campaign_edit_status">Estado</label>
+            <select id="campaign_edit_status" name="edit_status">
+              <option value="draft" <?php echo $campaignEditData['status'] === 'draft' ? 'selected' : ''; ?>>Borrador</option>
+              <option value="scheduled" <?php echo $campaignEditData['status'] === 'scheduled' ? 'selected' : ''; ?>>Programada</option>
+              <option value="sending" <?php echo $campaignEditData['status'] === 'sending' ? 'selected' : ''; ?>>Envío</option>
+              <option value="sent" <?php echo $campaignEditData['status'] === 'sent' ? 'selected' : ''; ?>>Enviada</option>
+            </select>
+
+            <label for="campaign_edit_template">Plantilla</label>
+            <select id="campaign_edit_template" name="edit_template_id" required>
+              <option value="">Selecciona una plantilla</option>
+              <?php foreach ($templateOptions as $templateOption): ?>
+                <option
+                  value="<?php echo htmlspecialchars((string) $templateOption['id'], ENT_QUOTES, 'UTF-8'); ?>"
+                  <?php echo $campaignEditTemplateId === (string) $templateOption['id'] ? 'selected' : ''; ?>
+                >
+                  <?php echo htmlspecialchars($templateOption['name'], ENT_QUOTES, 'UTF-8'); ?>
+                </option>
+              <?php endforeach; ?>
+            </select>
+
+            <button type="submit">Actualizar campaña</button>
+          </form>
+        <?php endif; ?>
+
         <h3>Listado de campañas</h3>
         <?php if ($campaignListError): ?>
           <p class="error"><?php echo htmlspecialchars($campaignListError, ENT_QUOTES, 'UTF-8'); ?></p>
@@ -745,6 +943,7 @@ if ($templateId && !$templateErrors) {
                 'status' => 'Estado',
                 'created_at' => 'Creado',
                 'updated_at' => 'Actualizado',
+                'actions' => 'Acciones',
             ];
 
             $nextDirection = $sortDirection === 'asc' ? 'desc' : 'asc';
@@ -755,16 +954,21 @@ if ($templateId && !$templateErrors) {
                 <tr>
                   <?php foreach ($labels as $column => $label): ?>
                     <?php
+                      $isSortable = $column !== 'actions';
                       $isActiveSort = $sortColumn === $column;
                       $direction = $isActiveSort ? $nextDirection : 'asc';
                     ?>
                     <th>
-                      <a href="?sort=<?php echo urlencode($column); ?>&dir=<?php echo urlencode($direction); ?>#campanas">
+                      <?php if ($isSortable): ?>
+                        <a href="?sort=<?php echo urlencode($column); ?>&dir=<?php echo urlencode($direction); ?>#campanas">
+                          <?php echo htmlspecialchars($label, ENT_QUOTES, 'UTF-8'); ?>
+                          <?php if ($isActiveSort): ?>
+                            <span class="sort-indicator"><?php echo $sortDirection === 'asc' ? '▲' : '▼'; ?></span>
+                          <?php endif; ?>
+                        </a>
+                      <?php else: ?>
                         <?php echo htmlspecialchars($label, ENT_QUOTES, 'UTF-8'); ?>
-                        <?php if ($isActiveSort): ?>
-                          <span class="sort-indicator"><?php echo $sortDirection === 'asc' ? '▲' : '▼'; ?></span>
-                        <?php endif; ?>
-                      </a>
+                      <?php endif; ?>
                     </th>
                   <?php endforeach; ?>
                 </tr>
@@ -781,6 +985,9 @@ if ($templateId && !$templateErrors) {
                     <td><?php echo htmlspecialchars($campaign['status'], ENT_QUOTES, 'UTF-8'); ?></td>
                     <td><?php echo htmlspecialchars($campaign['created_at'], ENT_QUOTES, 'UTF-8'); ?></td>
                     <td><?php echo htmlspecialchars($campaign['updated_at'], ENT_QUOTES, 'UTF-8'); ?></td>
+                    <td>
+                      <a href="dashboard.php?edit_campaign=<?php echo urlencode($campaign['id']); ?>#campanas">Editar</a>
+                    </td>
                   </tr>
                 <?php endforeach; ?>
               </tbody>
