@@ -116,6 +116,16 @@ CREATE TABLE IF NOT EXISTS email_queue (
     ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+CREATE TABLE IF NOT EXISTS email_events (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  queue_id BIGINT UNSIGNED NOT NULL,
+  event ENUM('delivered', 'open', 'click', 'bounce', 'complaint') NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_email_events_queue_id
+    FOREIGN KEY (queue_id) REFERENCES email_queue(id)
+    ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 CREATE TABLE IF NOT EXISTS send_queue (
   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   campaign_message_id BIGINT UNSIGNED NOT NULL,
@@ -166,6 +176,9 @@ CREATE INDEX idx_email_queue_status_scheduled_at
 
 CREATE INDEX idx_email_queue_campaign_status
   ON email_queue (campaign_id, status);
+
+CREATE INDEX idx_email_events_queue_event
+  ON email_events (queue_id, event);
 
 CREATE INDEX idx_events_campaign_message_type
   ON events (campaign_message_id, type);
