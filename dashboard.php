@@ -188,6 +188,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['form_type'] ?? '') === 'ca
                 PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
             ]);
 
+            $templateCheck = $pdo->prepare('SELECT 1 FROM plantillas WHERE id = :id');
+            $templateCheck->execute(['id' => $templateIdInput]);
+            if (!$templateCheck->fetchColumn()) {
+                $campaignErrors[] = 'La plantilla seleccionada no existe.';
+            } else {
             try {
                 $statement = $pdo->prepare(
                     'INSERT INTO campaigns (template_id, name, subject, from_email, from_name, status)
@@ -223,6 +228,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['form_type'] ?? '') === 'ca
                 'from_name' => '',
                 'status' => 'draft',
             ];
+            }
         } catch (PDOException $exception) {
             $campaignErrors[] = 'No se pudo guardar la campaña en la base de datos.';
         }
